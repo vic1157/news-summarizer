@@ -19,7 +19,6 @@ def main():
 	news = get_news("bitcoin")
 	#print(bitcoin_news[0])
 	
-	
 #Foundation of Application; will get news from the news API
 def get_news(topic):
 	url = (
@@ -65,6 +64,19 @@ def get_news(topic):
 	except requests.exceptions.RequestException as e:
 		print("Error occurred during API Request", e)
 
+
+class AssistantManager:
+	thread_id = None
+	assistant_id = None
+
+	def __init__(self, model: str = model):
+		self.client = client,
+		self.model = model,
+		self.assistant = None,
+		self.thread = None,
+		self.run = None,
+		self.summary = None
+	
 
 if __name__ == "__main__":
 	main()
