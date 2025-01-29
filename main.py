@@ -77,6 +77,70 @@ class AssistantManager:
 		self.run = None,
 		self.summary = None
 	
+	def retrieve_assistant(self):
+		if AssistantManager.assistant_id:
+			self.assistant = self.client.beta.assistants.retrieve(
+			assistant_id = AssistantManager.assistant_idd
+		)
+
+	def retrieve_thread(self):
+		if AssistantManager.thread_id:
+			self.thread = self.client.beta.threads.retrieve(
+				thread_id = AssistantManager.thread_id
+			)
+	
+	# Creates an assistant object if it doesn't exist
+	def create_assistant(self, name, instructions, tools):
+		if not self.assistant:
+			assistant_obj = self.client.beta.assistants.create(
+				name=name,
+				instructions=instructions,
+				tools=tools,
+				model=self.model
+			)
+			AssistantManager.assistant_id = assistant_obj.id
+			self.assistant = assistant_obj
+			print(f'AssistID:::: {self.assistant.id}')
+	
+	# Creates a thread object if it doesn't exist
+	def create_thread(self):
+		if not self.thread:
+			thread_obj = self.client.beta.threads.create()
+			AssistantManager.thread_id = thread_obj.id
+			self.thread = thread_obj
+			print(f'ThreadID::: {self.thread.id}')
+	
+	# Adds a message to an existing thread
+	def add_message_to_thread(self, role, content):
+		if self.thread:
+			self.client.beta.threads.messages.create(
+				thread_id = self.thread.id,
+				role=role,
+				content=content
+			)
+	
+	# Checks if a thread and an assistant object exists before execting run
+	def run_assistant(self, instructions):
+		if self.thread and self.assistant:
+			self.run = self.client.beta.threads.runs.create(
+				thread_id=self.thread.id,
+				assistant_id=self.assistant.id,
+				instructions=instructions
+			)
+	
+	# Retrieves the response from the model
+	def process_message(self):
+		if self.thread:
+			messages = self.client.beta.threads.messages.list(self.thread_id)
+			summary = []
+			
+			last_message = messages.data[0]
+			role = last_message.role
+			response = last_message.role.content[0].text.value
+			summary.append(response)
+			
+			print(f"SUMMARY ---> {role.capitalize()}: ==> {response}")
+		self.summary = '\n'.join(summary)
 
 if __name__ == "__main__":
 	main()
