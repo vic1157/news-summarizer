@@ -57,7 +57,7 @@ def get_news(topic):
 				URL: {url}
 				"""
 				final_news.append(title_description)
-			return final_news
+			return ''.join(final_news)
 		else:
 			return []
 		
