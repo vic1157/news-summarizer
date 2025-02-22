@@ -4,6 +4,7 @@ import os
 import requests
 import json
 import time 
+import streamlit as st
 
 load_dotenv()
 news_api_key = os.environ.get("NEWS_API_KEY")
@@ -141,6 +142,75 @@ class AssistantManager:
 			
 			print(f"SUMMARY ---> {role.capitalize()}: ==> {response}")
 		self.summary = '\n'.join(summary)
+	
+	# Executes function calling if required by a run
+	def call_required_functions(self, required_action):
+		if not self.run:
+			return
+		
+		tool_outputs = []
+		for action in required_action["tool_calls"]:
+			func_name = action["function"]["name"]
+			arguments = json.loads(action["function"]["arguments"])
+
+			if func_name == "get_news":
+				output = get_news(topic=arguments["topic"])
+				print(f'Output of get_news(): {output}')
+				tool_outputs.append({
+					"tool_call_id": action["id"],
+					"ouput": output
+				})
+			else:
+				raise ValueError(f"Unknown function: {func_name}")
+			print("Submitting outputs back to the Assistant...!")
+
+		# Submit all tool ouputs at once after collecting them in a list
+		if tool_outputs:
+			try:
+				self.run = client.beta.threads.runs.submit(
+					thread_id = self.thread.id,
+					run = self.run.id,
+					tool_outputs = tool_outputs
+				)
+				print("Tool outputs submitted successfully.")
+			except Exception as e:
+				print("Failed to submit tool ouputs:", e)
+		self.wait_for_completed()
+
+	# for streamlit
+	def get_summary(self):
+		return self.summary
+
+	# Waits for run to complete to confirm action or enter function calling
+	def wait_for_completed(self):
+		if self.thread and self.run:
+			while True:
+				time.sleep(5)
+				run_status = self.client.beta.threads.runs.retrieve(
+					thread_id= self.thread.id,
+					run_id = self.run.id
+				)
+				print(f'RUN STATUS::: {run_status.model_dump_json(indent=4)}')
+				
+				# Processes the message if the run has been completed
+				if run_status.status == 'completed':
+					self.process_message()
+					break
+				elif run_status.status == "requires_action":
+					print("FUNCTION CALLING NOW...")
+					self.call_required_functions(
+						run_status.required_action.submit_tool_outputs.model_dump()
+					)
+
+	# List run steps
+	def run_steps(self):
+		run_steps = self.client.beta.threads.runs.steps.list(
+			thread_id=self.thread.id,
+			run_id=self.run.id
+		)
+		print(f"Run-Steps::: {run_steps}")
+
+
 
 if __name__ == "__main__":
 	main()
